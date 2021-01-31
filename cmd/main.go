@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"os/signal"
 	"strconv"
 
 	"github.com/oc-robot/pingcap-interview/server"
@@ -35,10 +36,15 @@ func main() {
 	if err := exector.Exec(server.Add, "0ms"); err != nil {
 		log.Fatalf("create tc.qdisc failed, Err: %+v", err)
 	}
-	defer func() {
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+	go func() {
+		<-c
 		if err := exector.Exec(server.Del, "0ms"); err != nil {
 			log.Fatalf("del tc.qdisc failed, Err: %+v", err)
 		}
+		os.Exit(1)
 	}()
 
 	http.Handle("/latency/", server.NewServer(exector))
