@@ -1,6 +1,7 @@
 package server
 
 import (
+	"log"
 	"net/http"
 	"strings"
 	"time"
@@ -17,16 +18,21 @@ func NewServer(exector Exector) http.Handler {
 
 // ServeHTTP impl http.Handler
 func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	write := func(code int, resp string) {
+		w.WriteHeader(code)
+		w.Write([]byte(resp))
+		log.Printf("Path: %s, Resp: %d, %s", r.URL.Path, code, resp)
+	}
+
 	t := strings.TrimPrefix(r.URL.Path, "/latency/")
 	_, err := time.ParseDuration(t)
 	if err != nil {
-		w.WriteHeader(http.StatusBadRequest)
-		w.Write([]byte("invalid request body"))
+		write(http.StatusBadRequest, "invalid request body")
 		return
 	}
 	if err := s.exector.Exec(Change, t); err != nil {
-		w.WriteHeader(http.StatusInternalServerError)
-		w.Write([]byte(err.Error()))
+		write(http.StatusInternalServerError, err.Error())
 		return
 	}
+	write(http.StatusOK, "OK.")
 }
